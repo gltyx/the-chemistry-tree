@@ -6,6 +6,7 @@ const UNI_PHOTONS_ORDER = ["无线电波","微波","红外线","橙光","黄光"
 const UNI_PHOTONS_COLOR = ["#444444","brown","red",'orange','yellow','green','blue']
 const UNI_PHOTONS_REQ = [n(10),n(25),n(50),n(100),n(160),n(360),n(500),n(2500),n(7000),n(14000)]
 addLayer("Uni", {
+    milestonePopups: false,
     name: "宇宙", 
     position: 0, 
     startData() { return {
@@ -40,7 +41,7 @@ addLayer("Uni", {
         if(player.Uni.feature >= 2) gain = gain.mul(layers.Uni.quarkEff())
         if(getBuyableAmount('Uni','ph5')) gain = gain.mul(buyableEffect('Uni','ph5'))
         if(player.Uni.totalQuarks.gte(layers.Uni.quarksBonus[5].start)) gain = gain.mul(1e6)
-        
+        if(player.Uni.points.gte(1e130))gain= softcap(gain,'root',n(1e130),2) 
         return gain
     },
     resource: "宇宙精华", 
@@ -120,7 +121,7 @@ addLayer("Uni", {
             color: "#dd3333"
         },
         9:{
-            desc:'光子精华获取提升',
+            desc:'光子精华获取提升（下次光子复位生效）',
             effect(){return player.Uni.totalQuarks.pow(0.025)},
             start: n(1.5e26),
             prev: '×',
@@ -356,12 +357,33 @@ addLayer("Uni", {
             },
             unlocked() {return player.Uni.feature >= 1}
         },
+        'ph2': {
+            title() {return quickColor('['+this.id+']'+'<h3>广义相对论',hasUpgrade(this.layer,this.id)?'green':this.color())},
+            currencyLayer : 'Uni',
+            currencyInternalName: 'photons',
+            currencyDisplayName: '×10^40光子',
+            description() {return '狭义相对论的基数随着宇宙精华增加！'},
+            effect() {
+                let eff =  player.Uni.points.add(1).log(10).pow(0.2).div(2)
+                return eff
+            },
+            color(){return '#ffff88'},
+            canAfford() {return player.Uni.photons.gte(1e40)},
+            cost() {return n(1)},
+            effectDisplay() {return '+'+format(layers.Uni.upgrades[this.layer,this.id].effect())+""},    
+            style() {
+                if(!hasUpgrade(this.layer,this.id)&&!this.canAfford()){return ''}
+                else if(!hasUpgrade(this.layer,this.id)&&this.canAfford()){return {'box-shadow':'inset 0px 0px 5px '+(player.timePlayed%2+5)+'px '+this.color(), 'background-color':'black', 'color':'white', 'height':'130px', 'width':'130px','border-color':this.color()}}
+                else return {'background-color':this.color(), 'color':'black', 'border-color':'green', 'box-shadow':'0px 0px 5px '+(player.timePlayed%2+5)+'px '+this.color(), 'height':'130px', 'width':'130px'}
+            },
+            unlocked() {return hasMilestone('Uni','ph12')}
+        },        
         'qk1': {
             title() {return quickColor('['+this.id+']'+'<h3>夸克力量 1',hasUpgrade(this.layer,this.id)?'green':this.color())},
             currencyLayer : 'Uni',
             currencyInternalName: 'quarks',
             currencyDisplayName: '夸克',
-            description() {return '从 5 个光子精华开始。'},
+            description() {return '光子精华获取+1。'},
             color(){return '#dd3333'},
             canAfford() {return player.Uni.quarks.gte(this.cost())},
             cost() {return n(1)},
@@ -481,6 +503,7 @@ addLayer("Uni", {
             cost() {return n(15)},
             effect() {
                 let eff = getBuyableAmount('Uni','uni1').add(getBuyableAmount('Uni','uni2')).div(10).add(1)
+                if(hasMilestone('Uni','ph12')) eff = eff.pow(2)
                 return eff
             },
             effectDisplay() {return '×'+format(layers.Uni.upgrades[this.layer,this.id].effect())+""},
@@ -524,14 +547,14 @@ addLayer("Uni", {
             unlocked() {return hasUpgrade(this.layer,'qk'+Number(this.id[2]-1))}
         },
         'qk10': {
-            title() {return quickColor('['+this.id+']'+'<h3>夸克电荷（价格1e24夸克）',hasUpgrade(this.layer,this.id)?'green':this.color())},
+            title() {return quickColor('['+this.id+']'+'<h3>夸克电荷',hasUpgrade(this.layer,this.id)?'green':this.color())},
             currencyLayer : 'Uni',
             currencyInternalName: 'quarks',
-            currencyDisplayName: '夸克',
+            currencyDisplayName: '×10^24夸克',
             description() {return '降低夸克理论价格（^0.9）'},
             color(){return '#dd3333'},
             canAfford() {return player.Uni.quarks.gte(1e24)},
-            cost() {return n(1e24)},
+            cost() {return '1' },
             style() {
                 if(!hasUpgrade(this.layer,this.id)&&!this.canAfford()){return ''}
                 else if(!hasUpgrade(this.layer,this.id)&&this.canAfford()){return {'box-shadow':'inset 0px 0px 5px '+(player.timePlayed%2+5)+'px '+this.color(), 'background-color':'black', 'color':'white', 'height':'130px', 'width':'130px','border-color':this.color()}}
@@ -547,6 +570,7 @@ addLayer("Uni", {
             canAfford() {return player.Uni.points.gte(this.cost())},
             cost(x){
                 let cost = Decimal.mul(n(10),Decimal.pow(n(1.01),Decimal.pow(x,2))).mul(Decimal.pow(1.98,x))
+                if(hasMilestone('Uni','ph14')) cost = cost.pow(0.9)
                 return cost
             },
             base(){
@@ -572,6 +596,7 @@ addLayer("Uni", {
             canAfford() {return player.Uni.points.gte(this.cost())},
             cost(x){
                 let cost = Decimal.mul(n(1e4),Decimal.pow(n(1.25),Decimal.pow(x,2))).mul(Decimal.pow(4,x))
+                if(hasMilestone('Uni','ph14')) cost = cost.pow(0.9)
                 return cost
             },
             base(){
@@ -598,10 +623,12 @@ addLayer("Uni", {
             canAfford() {return player.Uni.photonsE.gte(this.cost())},
             cost(x){
                 let cost = Decimal.pow(1.777,x).add(x).floor()
+                if(hasMilestone('Uni','ph14')) cost = cost.pow(0.9)
                 return cost
             },
             base(){
                 let base = n(2)
+                if(hasUpgrade('Uni','ph2')) base = base.add(layers.Uni.upgrades['ph2'].effect())
                 return base
             },
             effect(x){
@@ -627,6 +654,7 @@ addLayer("Uni", {
             canAfford() {return player.Uni.photonsE.gte(this.cost())&&n(player.Uni.photonsP).gte(7)},
             cost(x){
                 let cost = Decimal.pow(2.111,x).add(x*2).floor()
+                if(hasMilestone('Uni','ph14')) cost = cost.pow(0.9)
                 return cost
             },
             base(){
@@ -657,6 +685,7 @@ addLayer("Uni", {
             canAfford() {return player.Uni.photonsE.gte(this.cost())&&n(player.Uni.photonsP).gte(9)},
             cost(x){
                 let cost = Decimal.pow(9,x).add(x).floor()
+                if(hasMilestone('Uni','ph14')) cost = cost.pow(0.9)
                 return cost
             },
             base(){
@@ -691,6 +720,7 @@ addLayer("Uni", {
             canAfford() {return player.Uni.photonsE.gte(this.cost())&&n(player.Uni.photonsP).gte(14)},
             cost(x){
                 let cost = Decimal.pow(13,x).add(x).floor()
+                if(hasMilestone('Uni','ph14')) cost = cost.pow(0.9)
                 return cost
             },
             base(){
@@ -722,6 +752,7 @@ addLayer("Uni", {
             canAfford() {return player.Uni.photonsE.gte(this.cost())&&n(player.Uni.photonsP).gte(17)},
             cost(x){
                 let cost = Decimal.pow(2.777,x).add(x*5).floor()
+                if(hasMilestone('Uni','ph14')) cost = cost.pow(0.9)
                 return cost
             },
             base(){
@@ -753,6 +784,7 @@ addLayer("Uni", {
             canAfford() {return player.Uni.photonsE.gte(this.cost())&&n(player.Uni.photonsP).gte(28)},
             cost(x){
                 let cost = Decimal.pow(23,x).add(x).floor()
+                if(hasMilestone('Uni','ph14')) cost = cost.pow(0.9)
                 return cost
             },
             base(){
@@ -792,6 +824,7 @@ addLayer("Uni", {
             },
             effect(x){
                 let effect = Decimal.sub(1,Decimal.mul(this.base(),x)).max(0)
+                if(hasMilestone('Uni','ph15')) effect = effect.sub(Decimal.mul(this.base(),x.sub(10).mul(0.01)))
                 return effect
             },
             buy(){
@@ -820,7 +853,8 @@ addLayer("Uni", {
             effect(x){
                 let effect = Decimal.pow(this.base(),x)
                 if(effect.gte(100)&&!hasMilestone(this.layer,'ph8')) effect = softcap(effect, 'root', n(100), 5)
-                else if(effect.gte(1000)) effect = softcap(effect, 'root', n(1000), 2)
+                else if(effect.gte(1000) &&!hasMilestone(this.layer,'ph13')) effect = softcap(effect, 'root', n(1000), 2)
+                else if(effect.gte(1e10)) effect = softcap(effect, 'root', n(1e10), 2)
                 return effect
             },
             buy(){
@@ -944,6 +978,54 @@ addLayer("Uni", {
         },
     },
     milestones: {    
+        'ph15': {
+            requirementDescription() {return quickColor("光子共振层达到 "+getPhotonLayerName(this.req)+" ("+formatWhole(n(player.Uni.photonsP).div(tmp.Uni.milestones[this.id].req).mul(100).min(100))+"%)",hasMilestone(this.layer,this.id)?'green':'')},
+            effectDescription(){ return `————————————————————————————————————————————————<br>`+`1.光子精华限制器超越上限也生效，但效果大幅降低。`},
+            req: n(55),
+            effect() { return player.Uni.photons.add(1).log(10) },
+            done() { return player.Uni.photonsP.gte(this.req) },
+            style() {
+                if(!hasMilestone(this.layer,this.id)){ return {'height':'100px','width':'650px','background':`linear-gradient(to right,#999999 ${formatWhole(n(player.Uni.photonsP).div(tmp.Uni.milestones[this.id].req).mul(100))}%,grey ${formatWhole(player.Uni.photonsP.div(tmp.Uni.milestones[this.id].req).mul(100))}%)`,'border-radius':'5px'}}
+                else return {'background': `repeating-linear-gradient(90deg, green 0, green 1px, #001700 0,#001700 90px)`,'background-size':'50px','color':'white','height':'100px','width':'650px','box-shadow':`0px 0px 4px ${player.timePlayed%4+6}px green`}
+            },
+            unlocked() {return hasMilestone(this.layer,'ph14')}
+        },                                        
+        'ph14': {
+            requirementDescription() {return quickColor("光子共振层达到 "+getPhotonLayerName(this.req)+" ("+formatWhole(n(player.Uni.photonsP).div(tmp.Uni.milestones[this.id].req).mul(100).min(100))+"%)",hasMilestone(this.layer,this.id)?'green':'')},
+            effectDescription(){ return `————————————————————————————————————————————————<br>`+`1.使qk10对光子理论和2个精华增幅生效。`},
+            req: n(52),
+            effect() { return player.Uni.photons.add(1).log(10) },
+            done() { return player.Uni.photonsP.gte(this.req) },
+            style() {
+                if(!hasMilestone(this.layer,this.id)){ return {'height':'100px','width':'650px','background':`linear-gradient(to right,#999999 ${formatWhole(n(player.Uni.photonsP).div(tmp.Uni.milestones[this.id].req).mul(100))}%,grey ${formatWhole(player.Uni.photonsP.div(tmp.Uni.milestones[this.id].req).mul(100))}%)`,'border-radius':'5px'}}
+                else return {'background': `repeating-linear-gradient(90deg, green 0, green 1px, #001700 0,#001700 90px)`,'background-size':'70px','color':'white','height':'100px','width':'650px','box-shadow':`0px 0px 4px ${player.timePlayed%4+6}px green`}
+            },
+            unlocked() {return hasMilestone(this.layer,'ph13')}
+        },                                
+        'ph13': {
+            requirementDescription() {return quickColor("光子共振层达到 "+getPhotonLayerName(this.req)+" ("+formatWhole(n(player.Uni.photonsP).div(tmp.Uni.milestones[this.id].req).mul(100).min(100))+"%)",hasMilestone(this.layer,this.id)?'green':'')},
+            effectDescription(){ return `————————————————————————————————————————————————<br>`+`1.夸克复制器软上限现在从1e10开始。`},
+            req: n(50),
+            effect() { return player.Uni.photons.add(1).log(10) },
+            done() { return player.Uni.photonsP.gte(this.req) },
+            style() {
+                if(!hasMilestone(this.layer,this.id)){ return {'height':'100px','width':'650px','background':`linear-gradient(to right,#999999 ${formatWhole(n(player.Uni.photonsP).div(tmp.Uni.milestones[this.id].req).mul(100))}%,grey ${formatWhole(player.Uni.photonsP.div(tmp.Uni.milestones[this.id].req).mul(100))}%)`,'border-radius':'5px'}}
+                else return {'background': `repeating-linear-gradient(90deg, green 0, green 1px, #001700 0,#001700 90px)`,'background-size':'90px','color':'white','height':'100px','width':'650px','box-shadow':`0px 0px 4px ${player.timePlayed%4+6}px green`}
+            },
+            unlocked() {return hasMilestone(this.layer,'ph12')}
+        },                        
+        'ph12': {
+            requirementDescription() {return quickColor("光子共振层达到 "+getPhotonLayerName(this.req)+" ("+formatWhole(n(player.Uni.photonsP).div(tmp.Uni.milestones[this.id].req).mul(100).min(100))+"%)",hasMilestone(this.layer,this.id)?'green':'')},
+            effectDescription(){ return `————————————————————————————————————————————————<br>`+`1.提升qk7的效果。<br>2.解锁新的宇宙升级<br>3.光子增加总夸克能量的获取(当前：×${format(this.effect())})`},
+            req: n(46),
+            effect() { return player.Uni.photons.add(1).log(10) },
+            done() { return player.Uni.photonsP.gte(this.req) },
+            style() {
+                if(!hasMilestone(this.layer,this.id)){ return {'height':'100px','width':'650px','background':`linear-gradient(to right,#999999 ${formatWhole(n(player.Uni.photonsP).div(tmp.Uni.milestones[this.id].req).mul(100))}%,grey ${formatWhole(player.Uni.photonsP.div(tmp.Uni.milestones[this.id].req).mul(100))}%)`,'border-radius':'5px'}}
+                else return {'background': `repeating-linear-gradient(90deg, yellow 0, yellow 1px, #001700 0,#001700 90px)`,'background-size':'50px','color':'white','height':'100px','width':'650px','box-shadow':`0px 0px 4px ${player.timePlayed%4+6}px yellow`}
+            },
+            unlocked() {return hasMilestone(this.layer,'ph11')}
+        },                
         'ph11': {
             requirementDescription() {return quickColor("光子共振层达到 "+getPhotonLayerName(this.req)+" ("+formatWhole(n(player.Uni.photonsP).div(tmp.Uni.milestones[this.id].req).mul(100).min(100))+"%)",hasMilestone(this.layer,this.id)?'green':'')},
             effectDescription(){ return `————————————————————————————————————————————————<br>`+`1.解锁新的夸克升级`},
@@ -983,7 +1065,7 @@ addLayer("Uni", {
         },
         'ph8': {
             requirementDescription() {return quickColor("光子共振层达到 "+getPhotonLayerName(this.req)+" ("+formatWhole(n(player.Uni.photonsP).div(tmp.Uni.milestones[this.id].req).mul(100).min(100))+"%)",hasMilestone(this.layer,this.id)?'green':'')},
-            effectDescription(){ return `————————————————————————————————————————————————<br>`+`1.夸克复制器软上限现在从 1000 开始。<br>2.光子精华限制器现在可以升级超越上限！且效果变为每个级别提升 1.2× 光子获取。<br>(当前：×${format(this.effect())})`},
+            effectDescription(){ return `————————————————————————————————————————————————<br>`+`1.夸克复制器软上限现在从 1000 开始并削弱。<br>2.光子精华限制器现在可以升级超越上限！且效果变为每个级别提升 1.2× 光子获取。<br>(当前：×${format(this.effect())})`},
             req: n(27),
             effect() { return Decimal.pow(1.2,getBuyableAmount(this.layer,'qk1')) },
             done() { return player.Uni.photonsP.gte(this.req) },
@@ -1074,7 +1156,7 @@ addLayer("Uni", {
             unlocked() {return hasUpgrade('Uni','ph1')}
         },   
         'el0': {
-            requirementDescription() {return quickColor("负电荷；不稳定电子（默认激活，反转于？？？） ", hasMilestone(this.layer,this.id)?'red':'')},
+            requirementDescription() {return quickColor("负电荷：不稳定电子（默认激活，反转于？？？） ", hasMilestone(this.layer,this.id)?'red':'')},
             effectDescription(){ return `————————————————————————————————————————————————<br>1.进行夸克坍缩和夸克共振会重置电子里程碑<br>2.您不能在共振外自动获得6种夸克。`},
            
             done() { return   player.Uni.feature >= 3 },
@@ -1087,7 +1169,7 @@ addLayer("Uni", {
           
         },          
         'el1': {
-            requirementDescription() {return quickColor("负电荷；宇宙凝结（激活于成就0-4-1，反转于1e25夸克） ", hasMilestone(this.layer,this.id)?'red':'')},
+            requirementDescription() {return quickColor("负电荷：宇宙凝结（激活于成就0-4-1，反转于5e24夸克） ", hasMilestone(this.layer,this.id)?'red':'')},
             effectDescription(){ return `————————————————————————————————————————————————<br>1.电子降低宇宙精华获取。(当前：/${format(this.effect())})`},
            
             done() { return  hasAchievement('Ach','0-4-1') },
@@ -1096,23 +1178,49 @@ addLayer("Uni", {
                 if(!hasMilestone(this.layer,this.id)){ return {'height':'100px','width':'650px','background':`linear-gradient(to right,#999999 ${formatWhole(n(player.Uni.photonsP).div(tmp.Uni.milestones[this.id].req).mul(100))}%,grey ${formatWhole(player.Uni.photonsP.div(tmp.Uni.milestones[this.id].req).mul(100))}%)`,'border-radius':'5px'}}
                 else return {'background': `repeating-linear-gradient(90deg, #444444 0, #444444 1px, #001700 0,#001700 70px)`,'background-size':'70px','color':'white','height':'100px','width':'650px','box-shadow':`0px 0px 4px ${player.timePlayed%2+5}px red`}
             },
-            unlocked() {return hasAchievement('Ach','0-4-1')&&! (player.Uni.quarks).gte(1e25)},
+            unlocked() {return hasAchievement('Ach','0-4-1')&&!  hasAchievement('Ach','0-4-2')},
           
         },  
         'atel1': {
-            requirementDescription() {return quickColor("正电荷；宇宙升华 ", hasMilestone(this.layer,this.id)?'green':'')},
+            requirementDescription() {return quickColor("正电荷：宇宙升华 ", hasMilestone(this.layer,this.id)?'green':'')},
             effectDescription(){ return `————————————————————————————————————————————————<br>1.电子增加宇宙精华获取。(当前：x${format(this.effect())})`},
            
-            done() { return   (player.Uni.quarks).gte(1e25) },
+            done() { return hasAchievement('Ach','0-4-2')   },
             effect() { return  n(layers.Uni.getElecGain().add(1))},
             style() {
                 if(!hasMilestone(this.layer,this.id)){ return {'height':'100px','width':'650px','background':`linear-gradient(to right,#999999 ${formatWhole(n(player.Uni.photonsP).div(tmp.Uni.milestones[this.id].req).mul(100))}%,grey ${formatWhole(player.Uni.photonsP.div(tmp.Uni.milestones[this.id].req).mul(100))}%)`,'border-radius':'5px'}}
                 else return {'background': `repeating-linear-gradient(90deg, #444444 0, #444444 1px, #001700 0,#001700 70px)`,'background-size':'70px','color':'white','height':'100px','width':'650px','box-shadow':`0px 0px 4px ${player.timePlayed%2+5}px green`}
             },
-            unlocked() {return (player.Uni.quarks).gte(1e25) },
+            unlocked() {return  hasAchievement('Ach','0-4-2') },
           
         },          
-               
+        'el2': {
+            requirementDescription() {return quickColor("负电荷：光速冻结（激活于1e40光子，反转于4.4e4上夸克能量） ", hasMilestone(this.layer,this.id)?'red':'')},
+            effectDescription(){ return `————————————————————————————————————————————————<br>1.光子获取/15。<br>2.光子的${quickColor("溢出<sup>2</sup>",'orange')}导致的削弱指数-0.01。`},
+           
+            done() { return  (player.Uni.photons).gte(1e40) },
+            effect() { return  n(layers.Uni.getElecGain().add(1))},
+            style() {
+                if(!hasMilestone(this.layer,this.id)){ return {'height':'100px','width':'650px','background':`linear-gradient(to right,#999999 ${formatWhole(n(player.Uni.photonsP).div(tmp.Uni.milestones[this.id].req).mul(100))}%,grey ${formatWhole(player.Uni.photonsP.div(tmp.Uni.milestones[this.id].req).mul(100))}%)`,'border-radius':'5px'}}
+                else return {'background': `repeating-linear-gradient(90deg, #444444 0, #444444 1px, #001700 0,#001700 70px)`,'background-size':'70px','color':'white','height':'100px','width':'650px','box-shadow':`0px 0px 4px ${player.timePlayed%2+5}px red`}
+            },
+            unlocked() {return  hasMilestone('Uni','atel1')&&! hasAchievement('Ach','0-4-5')  },
+          
+        },    
+        'atel2': {
+            requirementDescription() {return quickColor("正电荷：明镜烈火 ", hasMilestone(this.layer,this.id)?'green':'')},
+            effectDescription(){ return `————————————————————————————————————————————————<br>1.光子获取x15。<br>2.光子的${quickColor("溢出<sup>2</sup>",'orange')}导致的削弱指数+0.01。`},
+           
+            done() { return   hasAchievement('Ach','0-4-5')  },
+            effect() { return  n(layers.Uni.getElecGain().add(1))},
+            style() {
+                if(!hasMilestone(this.layer,this.id)){ return {'height':'100px','width':'650px','background':`linear-gradient(to right,#999999 ${formatWhole(n(player.Uni.photonsP).div(tmp.Uni.milestones[this.id].req).mul(100))}%,grey ${formatWhole(player.Uni.photonsP.div(tmp.Uni.milestones[this.id].req).mul(100))}%)`,'border-radius':'5px'}}
+                else return {'background': `repeating-linear-gradient(90deg, #444444 0, #444444 1px, #001700 0,#001700 70px)`,'background-size':'70px','color':'white','height':'100px','width':'650px','box-shadow':`0px 0px 4px ${player.timePlayed%2+5}px green`}
+            },
+            unlocked() {return  hasAchievement('Ach','0-4-5') },
+          
+        },                               
+   
     },
     infoboxes: {
     'qk1': {
@@ -1142,7 +1250,7 @@ addLayer("Uni", {
                 ["clickable",'f'],
                 "blank",
                 ['row',[['upgrade','uni1'],['upgrade','uni2'],['upgrade','uni3'],['upgrade','uni4'],['upgrade','uni5']]],
-                ['row',[['upgrade','uni6'],['upgrade','ph1'],['upgrade','uni8'],['upgrade','uni9'],['upgrade','uni10']]],
+                ['row',[['upgrade','uni6'],['upgrade','ph1'],['upgrade','ph2'],['upgrade','ph3'],['upgrade','ph4']]],
             ],
             buttonStyle() {return {'border-radius':'5px','background-color':'white','color':'black'}}
         },
@@ -1179,6 +1287,13 @@ addLayer("Uni", {
             ['row',[['buyable','ph4'],['buyable','ph5'],['buyable','ph6']]],
             ['row',[['buyable','qkc1'],['buyable','qkc2'],['buyable','qkc3']]],
             "blank",
+            ['row',[['milestone','ph18']]], 
+            ['row',[['milestone','ph17']]], 
+            ['row',[['milestone','ph16']]], 
+            ['row',[['milestone','ph15']]], 
+            ['row',[['milestone','ph14']]], 
+            ['row',[['milestone','ph13']]], 
+            ['row',[['milestone','ph12']]], 
             ['row',[['milestone','ph11']]], 
             ['row',[['milestone','ph10']]], 
             ['row',[['milestone','ph9']]], 
@@ -1233,7 +1348,15 @@ addLayer("Uni", {
               ['display-text',function(){return "你拥有 "+quickBigColor(formatWhole(layers.Uni.getElecGain()),"yellowgreen")+" 电子(基于能量自动生成), 自身加成夸克获取。"}],
               ['row',[['milestone','el0']]], 
             ['row',[['milestone','el1']]],  
+            ['row',[['milestone','el2']]],  
+            ['row',[['milestone','el3']]],  
+            ['row',[['milestone','el4']]],  
+            ['row',[['milestone','el5']]],  
             ['row',[['milestone','atel1']]],  
+            ['row',[['milestone','atel2']]],  
+            ['row',[['milestone','atel3']]],  
+            ['row',[['milestone','atel4']]],  
+            ['row',[['milestone','atel5']]],  
          
         ],
         buttonStyle() {return {'border-radius':'5px','background': 'radial-gradient(circle at center, yellowgreen 0, green 100%)', 'box-shadow': '2px 2px 5px green','border-color':'green'}},
@@ -1256,6 +1379,7 @@ addLayer("Uni", {
     photonEff(){
         let eff = Decimal.pow(player.Uni.photons.add(1).log(10),n(0.75).add(hasMilestone('Uni','ph4')?layers.Uni.milestones['ph1'].effect().mul(10):0)).add(1)
         if(eff.gte(10000)) eff = softcap(eff, 'root', 10000, 5)
+        if(eff.gte(1e25)) eff = softcap(eff, 'root', 1e25, 10)  
         if(player.Uni.coloredQuarks[4].gte(1)) eff = eff.pow(2)
         return eff
     },
@@ -1276,6 +1400,8 @@ addLayer("Uni", {
         if(hasUpgrade('Uni','1k5')) {sc[0] = sc[0].mul(upgradeEffect('Uni','qk5')) , sc[1] = sc[1].mul(upgradeEffect('Uni','qk5'))}
         else if(player.Uni.activeChallenge == 'qk3') sc[3] = n(0.191981)
         if(player.Uni.coloredQuarks[2].gte(1)) sc[3] = sc[3].add(0.04)
+        if(hasMilestone('Uni','el2')) sc[3] = sc[3].sub(0.01)
+        if(hasMilestone('Uni','atel2'))  sc[3]= sc[3].add(0.02)                 
         if(hasAchievement('Ach','0-3-3'))sc[0] = sc[0].mul(1e9000000000000000)      
         if(player.Uni.activeChallenge == 'qk4') sc[3] = sc[3].add(Decimal.mul(getBuyableAmount('Uni','qkc1'),0.1).min(0.6))
         if(player.Uni.activeChallenge == 'qk4') sc[2] = sc[2].add(Decimal.mul(getBuyableAmount('Uni','qkc1'),0.1).min(0.6))
@@ -1285,6 +1411,7 @@ addLayer("Uni", {
     getPhotonReq(){
         if(player.Uni.photonsP.lt(10)) return UNI_PHOTONS_REQ[player.Uni.photonsP].mul(player.Uni.activeChallenge == 'qk4'? 10000 : 1)
         else return Decimal.pow(2.5,player.Uni.photonsP.sub(10).pow(1.25)).mul(40000).mul(player.Uni.activeChallenge == 'qk4'? 10000 : 1)
+       
     },
     getPhotonGain(){
         let gain = n(1)
@@ -1305,14 +1432,18 @@ addLayer("Uni", {
         if(player.Uni.photons.gte(layers.Uni.getPhotonScs()[1])) gain = gain.mul(layers.Uni.getPhotonScs()[3].pow(player.Uni.photons.div(layers.Uni.getPhotonScs()[1]).log(2)))
         if(player.Uni.activeChallenge == 'qk4'&&player.Uni.photons.gte(10)) gain = gain.mul(layers.Uni.getPhotonScs()[2].mul(0.25).pow(player.Uni.photons.div(layers.Uni.getPhotonScs()[0]).log(2)))
         if(hasMilestone('Uni','ph3')) gain = gain.mul(2)
+        if(hasMilestone('Uni','el2')) gain = gain.div(15)   
+        if(hasMilestone('Uni','atel2')) gain = gain.mul(225)         
         if(hasMilestone('Uni','ph8')) gain = gain.mul(milestoneEffect('Uni','ph8'))
         if(getBuyableAmount('Uni','ph6').gte(1)) gain = gain.mul(buyableEffect('Uni','ph6')).floor()
+        if(hasAchievement('Ach','0-4-5')) gain = gain.mul(299792458)     
+        if(player.Uni.photons.gte(1e50))gain= softcap(gain,'root',n(1e50),2)    
         return gain
     },
     getExtraPhotons()
     {
         let extra = [n(0),n(1)]
-        if(hasUpgrade('Uni','qk1')) extra[0] = extra[0].add(5)
+        if(hasUpgrade('Uni','qk1')) extra[1] = extra[1].add(1)
         if(player.Uni.activeChallenge == 'qk1'||player.Uni.activeChallenge == 'qk4') extra[1] = extra[1].div(100)
         if(hasAchievement('Ach','0-3-5')) extra[1] = extra[1].mul(1.5)
         if(getBuyableAmount('Uni','qk3').gte(1)) extra[1] = extra[1].mul(buyableEffect('Uni','qk3'))
@@ -1347,6 +1478,7 @@ addLayer("Uni", {
     getColoredQuarkEGain(){
         let gain = n(1)
         if(hasMilestone('Uni','ph9')) gain = gain.mul(milestoneEffect('Uni','ph9'))
+        if(hasMilestone('Uni','ph12')) gain = gain.mul(milestoneEffect('Uni','ph12'))    
         return gain
     },
     quarkEff(){
@@ -1354,7 +1486,7 @@ addLayer("Uni", {
         return eff
     },
     getElecGain(){
-        let gain = player.points.log10().div(10)
+        let gain = player.points.add(1).log10().div(10)
         return gain
     },
     row: 0, // Row the layer is in on the tree (0 is the first row)
@@ -1494,6 +1626,8 @@ addLayer("Uni", {
                 if(layers.Uni.getColoredQuarkGain().gte(1)) player.Uni.coloredQuarks[this.id[2]-1] = n(1)
                 player.Uni.activeChallenge = ''
                 setBuyableAmount('Uni','qkc1',n(0))
+                setBuyableAmount('Uni','qkc2',n(0))
+                setBuyableAmount('Uni','qkc3',n(0))
             },
             unlocked() {return player.Uni.coloredQuarks[this.id[2]-2].gte(1)}
         },
@@ -1727,7 +1861,7 @@ addLayer("Ach", {
         '0-4-2':{
             name() {return "电荷反转！"},
             tooltip() { return '将一个负电荷反转为正电荷。+5苯'},
-            done() { return  player.Uni.quarks.gte(1e25) }, 
+            done() { return  player.Uni.quarks.gte(5e24) }, 
             onComplete() {return player.Ach.points = player.Ach.points.add(5)
             },
         },
@@ -1738,6 +1872,20 @@ addLayer("Ach", {
             onComplete() {return player.Ach.points = player.Ach.points.add(5)
             },
         },
+        '0-4-4':{
+            name() {return "η=???"},
+            tooltip() { return '使光子精华消耗为负。+5苯'},
+            done() { return   hasMilestone('Uni','ph15') }, 
+            onComplete() {return player.Ach.points = player.Ach.points.add(5)
+            },
+        },        
+        '0-4-5':{
+            name() {return "光速神授说"},
+            tooltip() { return '反转第2个电荷。使光子x该成就名字的前40%（m/s）+5苯'},
+            done() { return  (player.Uni.coloredQuarksE[0]).gte(44000)  }, 
+            onComplete() {return player.Ach.points = player.Ach.points.add(5)
+        },
+    },                   
     },
     row: 'side', // Row the layer is in on the tree (0 is the first row)
     layerShown(){return hasUpgrade('Uni','uni3')},

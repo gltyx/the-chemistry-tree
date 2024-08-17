@@ -60,7 +60,7 @@ function addedPlayerData() { return {
 var displayThings = [
 	function(){return '你的宇宙当前拥有 '+quickBigColor(formatHeat(player.points),'#FFFFFF')+' 能量。'},
 	function(){return tmp.other.oompsMag != 0 ? format(tmp.other.oomps) + " OOM" + (tmp.other.oompsMag < 0 ? "^OOM" : tmp.other.oompsMag > 1 ? "^" + tmp.other.oompsMag : "") + "s" : '+'+formatHeat(getPointGen())+"/sec"},
-	`结局：50⌬ + 光子共振层达到 黄光4层`
+	`结局：55⌬ + 光子共振层达到 绿光4层`
 ]
 
 // Determines when the game "ends"
